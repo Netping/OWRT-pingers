@@ -1,0 +1,30 @@
+config globals 'globals'
+	list protocol 'NONE.нет'
+	list protocol 'ICMP.пинг'
+	list event 'NONE.нет'
+
+config pinger 'prototype'
+	option name 'Pinger'
+	option description ''
+	option protocol 'NONE'
+	option state '0'
+
+config rule 'prototype'
+	option name 'Rule'
+	option description ''
+	option state '0'
+	option status '0'
+	option expression ''
+	option event_true 'NONE'
+	option event_false 'NONE'
+
+option pinger
+	option name 'google_ping'
+	option description 'Ping google.com'
+	option protocol 'ICMP'
+	option state '1'
+	option address '8.8.8.8'
+	option size 1500
+	option timeout 1500 #millisecs
+	option tries 3
+	option nofails 0
