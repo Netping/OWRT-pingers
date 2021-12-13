@@ -3,13 +3,13 @@ config globals 'globals'
 	list protocol 'ICMP.пинг'
 	list event 'NONE.нет'
 
-config pinger 'prototype'
+config pinger 'pinger_prototype'
 	option name 'Pinger'
 	option description ''
 	option protocol 'NONE'
 	option state '0'
 
-config rule 'prototype'
+config rule 'rule_prototype'
 	option name 'Rule'
 	option description ''
 	option state '0'
@@ -18,13 +18,13 @@ config rule 'prototype'
 	option event_true 'NONE'
 	option event_false 'NONE'
 
-option pinger
+config pinger
 	option name 'google_ping'
 	option description 'Ping google.com'
 	option protocol 'ICMP'
 	option state '1'
 	option address '8.8.8.8'
 	option size 1500
-	option timeout 1500 #millisecs
+	option timeout 1500
 	option tries 3
 	option nofails 0
