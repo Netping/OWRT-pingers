@@ -24,7 +24,7 @@ config pinger
 	option protocol 'ICMP'
 	option state '1'
 	option address '8.8.8.8'
-	option size 1500
+	option size 64
 	option timeout 1500
 	option tries 3
 	option nofails 0

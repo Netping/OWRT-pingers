@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import enum
 import ubus
-import icmplib
+from icmplib import ping
 from threading import Thread
 from threading import Lock
 from journal import journal
@@ -20,6 +20,7 @@ class pinger:
     name = ''
     description = ''
     state = False
+    status = -1
     protocol = protocol_type.empty
     parameters = {}
 
@@ -228,11 +229,23 @@ def pollPingers():
 
             print("pollPingers loop...")
 
-            print("pollPingers e.name " + e.name)
             if e.state:
                 try:
-                    result = icmplib.ping(address=e.parameters['address'], count=e.parameters['tries'], payload_size=e.parameters['size'], timeout=e.parameters['timeout'])
-                    print(result)
+                    result = ping(address=e.parameters['address'], count=e.parameters['tries'], payload_size=e.parameters['size'], timeout=(e.parameters['timeout'] / 1000))
+
+                    try:
+                        if e.parameters['nofails']:
+                            if result.packet_loss == 0 and result.is_alive:
+                                e.status = 1
+                            else:
+                                e.status = 0
+                        else:
+                            if result.is_alive:
+                                e.status = 1
+                            else:
+                                e.status = 0
+                    except:
+                        e.status = -2
                 except Exception as ex:
                     #bad ping
                     print("pollPingers exception: " + str(ex))
