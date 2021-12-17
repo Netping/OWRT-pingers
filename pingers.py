@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 import enum
 import ubus
+import time
+import re
 from icmplib import ping
 from threading import Thread
 from threading import Lock
@@ -28,8 +30,8 @@ class rule:
     name = ''
     description = ''
     state = False
-    status = 0
-    expression = None
+    status = -1
+    expression = ''
     event_true = event_type.empty
     event_false = event_type.empty
     parameters = {}
@@ -38,6 +40,7 @@ module_name = "Pingers"
 confName = "pingerconf"
 pingers = []
 rules = []
+threads_pingers = []
 
 protocol_type_map = { 'NONE' : protocol_type.empty,
                         'ICMP' : protocol_type.ICMP }
@@ -47,13 +50,96 @@ event_type_map = { 'NONE' : event_type.empty }
 pingerMutex = Lock()
 ruleMutex = Lock()
 pollMainThread = None
-pollPingersThread = None
 pollRulesThread = None
 
 pinger_default = pinger()
 rule_default = rule()
 
+
+def do_event(event):
+    if event != event_type.empty:
+        #TODO
+        pass
+
+def thread_poll(thread_id, pinger):
+    while thread_id in threads_pingers:
+        if not pinger.state:
+            #time.sleep(1)
+            continue
+
+        #print("thread_poll loop... " + pinger.parameters['address'])
+
+        try:
+            result = ping(address=pinger.parameters['address'], count=pinger.parameters['tries'], payload_size=pinger.parameters['size'], timeout=(pinger.parameters['timeout'] / 1000))
+
+            try:
+                if pinger.parameters['nofails']:
+                    if result.packet_loss == 0 and result.is_alive:
+                        pinger.status = 1
+                    else:
+                        pinger.status = 0
+                else:
+                    if result.is_alive:
+                        pinger.status = 1
+                    else:
+                        pinger.status = 0
+            except:
+                pinger.status = -2
+        except Exception as ex:
+            #bad ping
+            print("thread_poll exception: " + str(ex))
+
+        #time.sleep(1)
+
+def expression_convert(expression):
+    result = re.findall(r'%_(\S+)_%', expression)
+    result = set(result)
+
+    for r in result:
+        expression = expression.replace("%_" + r + "_%", "data['" + r + "']")
+
+    logic_operands = [ 'AND', 'OR', 'NOT' ]
+
+    for l in logic_operands:
+        expression = expression.replace(l, l.lower())
+
+    expression = expression.replace("=", "==")
+
+    return expression
+
 def applyConf():
+    def get_pinger_state_callback(event, data):
+        ret_val = { 'state' : '-1',
+                    'status' : '-2' }
+
+        pingerMutex.acquire()
+
+        for p in pingers:
+            if data['name'] == p.name:
+                ret_val['state'] = str(int(p.state))
+                ret_val['status'] = str(p.status)
+                break
+
+        pingerMutex.release()
+
+        event.reply(ret_val)
+
+    def get_rule_state_callback(event, data):
+        ret_val = { 'state' : '-1',
+                    'status' : '-2' }
+
+        ruleMutex.acquire()
+
+        for r in rules:
+            if data['name'] == r.name:
+                ret_val['state'] = str(int(r.state))
+                ret_val['status'] = str(r.status)
+                break
+
+        ruleMutex.release()
+
+        event.reply(ret_val)
+
     confvalues = ubus.call("uci", "get", {"config": confName})
     for confdict in list(confvalues[0]['values'].values()):
         if confdict['.type'] == 'pinger' and confdict['.name'] == 'pinger_prototype':
@@ -104,37 +190,32 @@ def applyConf():
                 pass
 
             try:
-                rule_default.status = int(confdict['status'])
-            except:
-                pass
-
-            try:
                 rule_default.expression = confdict['expression']
             except:
                 pass
 
         #new pinger
         if confdict['.type'] == 'pinger' and confdict['.name'] != 'pinger_prototype':
-            p = pinger_default
+            p = pinger()
             try:
                 p.name = confdict['name']
             except:
-                pass
+                p.name = pinger_default.name
 
             try:
                 p.description = confdict['description']
             except:
-                pass
+                p.description = pinger_default.description
 
             try:
                 p.state = bool(int(confdict['state']))
             except:
-                pass
+                p.state = pinger_default.state
 
             try:
                 p.protocol = protocol_type_map[confdict['protocol']]
             except:
-                pass
+                p.protocol = pinger_default.protocol
 
             try:
                 p.parameters['address'] = confdict['address']
@@ -167,51 +248,76 @@ def applyConf():
 
         #new rule
         if confdict['.type'] == 'rule' and confdict['.name'] != 'rule_prototype':
-            r = rule_default
+            r = rule()
 
             try:
                 r.name = confdict['name']
             except:
-                pass
+                r.name = rule_default.name
 
             try:
                 r.description = confdict['description']
             except:
-                pass
+                r.description = rule_default.description
 
             try:
                 r.state = bool(int(confdict['state']))
             except:
-                pass
+                r.state = rule_default.state
 
             try:
                 r.event_true = event_type_map[confdict['event_true']]
             except:
-                pass
+                r.event_true = rule_default.event_true
 
             try:
                 r.event_false = event_type_map[confdict['event_false']]
             except:
-                pass
-
-            try:
-                r.status = int(confdict['status'])
-            except:
-                pass
+                r.event_false = rule_default.event_false
 
             try:
                 r.expression = confdict['expression']
             except:
-                pass
+                r.expression = rule_default.expression
 
             ruleMutex.acquire()
             rules.append(r)
             ruleMutex.release()
 
+    pingerMutex.acquire()
+
+    for p in pingers:
+        thr_id = len(threads_pingers) + 1
+
+        threads_pingers.append(thr_id)
+
+        thr = Thread(target=thread_poll, args=(thr_id, p))
+        thr.start()
+
+    pingerMutex.release()
+
+    ubus.add(
+            'owrt_pingers', {
+                'get_pinger_state': {
+                    'method': get_pinger_state_callback,
+                    'signature': {
+                        'name': ubus.BLOBMSG_TYPE_STRING
+                    }
+                },
+                'get_rule_state': {
+                    'method': get_rule_state_callback,
+                    'signature': {
+                        'name': ubus.BLOBMSG_TYPE_STRING
+                    }
+                }
+            }
+        )
+
 def reconfigure(event, data):
     if data['config'] == confName:
         del pingers[:]
         del rules[:]
+        del threads_pingers[:]
 
         applyConf()
 
@@ -219,44 +325,42 @@ def pollMain():
     ubus.listen(("commit", reconfigure))
     ubus.loop()
 
-def pollPingers():
-    while True:
-        for p in pingers:
-            #TODO
-            pingerMutex.acquire()
-            e = p
-            pingerMutex.release()
-
-            print("pollPingers loop...")
-
-            if e.state:
-                try:
-                    result = ping(address=e.parameters['address'], count=e.parameters['tries'], payload_size=e.parameters['size'], timeout=(e.parameters['timeout'] / 1000))
-
-                    try:
-                        if e.parameters['nofails']:
-                            if result.packet_loss == 0 and result.is_alive:
-                                e.status = 1
-                            else:
-                                e.status = 0
-                        else:
-                            if result.is_alive:
-                                e.status = 1
-                            else:
-                                e.status = 0
-                    except:
-                        e.status = -2
-                except Exception as ex:
-                    #bad ping
-                    print("pollPingers exception: " + str(ex))
-
 def pollRules():
     while True:
+        data = {}
+
+        pingerMutex.acquire()
+
+        #build data from pingers
+        for p in pingers:
+            if p.status == 1:
+                data[p.name] = True
+            else:
+                data[p.name] = False
+
+        pingerMutex.release()
+
+        ruleMutex.acquire()
+
         for r in rules:
-            #TODO
-            ruleMutex.acquire()
-            e = r
-            ruleMutex.release()
+            if not r.state:
+                continue
+
+            expr = expression_convert(r.expression)
+            expr_res = eval(expr)
+
+            if not expr_res:
+                r.status = 0
+                print("rule " + r.name + " is false")
+                do_event(r.event_false)
+            else:
+                r.status = 1
+                print("rule " + r.name + " is true")
+                do_event(r.event_true)
+
+        ruleMutex.release()
+
+        time.sleep(1)
 
 def main():
     try:
@@ -266,15 +370,13 @@ def main():
 
         print("Pingers: " + str(pingers))
 
-        pollPingersThread = Thread(target=pollPingers, args=())
-        pollPingersThread.start()
-
         pollRulesThread = Thread(target=pollRules, args=())
         pollRulesThread.start()
 
         pollMainThread = Thread(target=pollMain, args=())
         pollMainThread.start()
     except KeyboardInterrupt:
+        del threads_pingers[:]
         ubus.disconnect()
 
 if __name__ == "__main__":
