@@ -197,6 +197,8 @@ def applyConf():
         #new pinger
         if confdict['.type'] == 'pinger' and confdict['.name'] != 'pinger_prototype':
             p = pinger()
+            p.parameters = {}
+
             try:
                 p.name = confdict['name']
             except:
@@ -242,6 +244,7 @@ def applyConf():
             except:
                 pass
 
+
             pingerMutex.acquire()
             pingers.append(p)
             pingerMutex.release()
@@ -249,6 +252,7 @@ def applyConf():
         #new rule
         if confdict['.type'] == 'rule' and confdict['.name'] != 'rule_prototype':
             r = rule()
+            r.parameters = {}
 
             try:
                 r.name = confdict['name']
@@ -351,11 +355,9 @@ def pollRules():
 
             if not expr_res:
                 r.status = 0
-                print("rule " + r.name + " is false")
                 do_event(r.event_false)
             else:
                 r.status = 1
-                print("rule " + r.name + " is true")
                 do_event(r.event_true)
 
         ruleMutex.release()
@@ -367,8 +369,6 @@ def main():
         ubus.connect()
 
         applyConf()
-
-        print("Pingers: " + str(pingers))
 
         pollRulesThread = Thread(target=pollRules, args=())
         pollRulesThread.start()
