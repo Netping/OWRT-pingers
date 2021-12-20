@@ -4,7 +4,7 @@ TITLE="OWRT_pingers"
 
 PKG_NAME="OWRT_pingers"
 PKG_VERSION="V0.1"
-PKG_RELEASE=2
+PKG_RELEASE=3
 
 MODULE_FILES=pingers.py
 MODULE_FILES_DIR=/etc/netping_pingers/

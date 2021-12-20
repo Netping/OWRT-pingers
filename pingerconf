@@ -2,6 +2,7 @@ config globals 'globals'
 	list protocol 'NONE.нет'
 	list protocol 'ICMP.пинг'
 	list event 'NONE.нет'
+	list event 'statechanged.Состояние изменено'
 
 config pinger 'pinger_prototype'
 	option name 'Pinger'
@@ -22,7 +23,7 @@ config pinger
 	option description 'Ping google dns'
 	option protocol 'ICMP'
 	option state '1'
-	option address '8.8.8.9'
+	option address '8.8.8.8'
 	option size 64
 	option timeout 1500
 	option tries 3
@@ -44,5 +45,5 @@ config rule
 	option description 'True if ping google success'
 	option state '1'
 	option expression '%_google_ping_% AND %_yandex_ping_%'
-	option event_true 'NONE'
-	option event_false 'NONE'
+	option event_true 'statechanged'
+	option event_false 'statechanged'

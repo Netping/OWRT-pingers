@@ -16,7 +16,8 @@ class protocol_type(enum.Enum):
     ICMP = 1
 
 class event_type(enum.Enum):
-    empty = 0
+    empty = 0,
+    statechanged = 1
 
 class pinger:
     name = ''
@@ -41,25 +42,32 @@ confName = "pingerconf"
 pingers = []
 rules = []
 threads_pingers = []
+ubus_signals = []
 
 protocol_type_map = { 'NONE' : protocol_type.empty,
                         'ICMP' : protocol_type.ICMP }
 
-event_type_map = { 'NONE' : event_type.empty }
+event_type_map = { 'NONE' : event_type.empty,
+                    'statechanged' : event_type.statechanged }
 
 pingerMutex = Lock()
 ruleMutex = Lock()
 pollMainThread = None
 pollRulesThread = None
+pollRules_flag = True
 
 pinger_default = pinger()
 rule_default = rule()
 
 
-def do_event(event):
-    if event != event_type.empty:
-        #TODO
-        pass
+def do_event(event, name, state):
+    if event == event_type.statechanged:
+        #ubus.send("signal", {"event": "statechanged", "name": name, "state": state})
+        e = {}
+        e['name'] = name
+        e['state'] = state
+
+        ubus_signals.insert(0, e)
 
 def thread_poll(thread_id, pinger):
     while thread_id in threads_pingers:
@@ -325,12 +333,8 @@ def reconfigure(event, data):
 
         applyConf()
 
-def pollMain():
-    ubus.listen(("commit", reconfigure))
-    ubus.loop()
-
 def pollRules():
-    while True:
+    while pollRules_flag:
         data = {}
 
         pingerMutex.acquire()
@@ -352,13 +356,19 @@ def pollRules():
 
             expr = expression_convert(r.expression)
             expr_res = eval(expr)
+            new_status = -1
 
             if not expr_res:
-                r.status = 0
-                do_event(r.event_false)
+                new_status = 0
             else:
-                r.status = 1
-                do_event(r.event_true)
+                new_status = 1
+            if new_status != r.status:
+                r.status = new_status
+                if r.status == 1:
+                    do_event(r.event_true, r.name, '1')
+
+                if r.status == 0:
+                    do_event(r.event_false, r.name, '0')
 
         ruleMutex.release()
 
@@ -373,10 +383,18 @@ def main():
         pollRulesThread = Thread(target=pollRules, args=())
         pollRulesThread.start()
 
-        pollMainThread = Thread(target=pollMain, args=())
-        pollMainThread.start()
+        ubus.listen(("commit", reconfigure))
+
+        while True:
+            ubus.loop(1)
+            while ubus_signals:
+                e = ubus_signals.pop()
+                ubus.send("signal", {"event": "statechanged", "name": e['name'], "state": e['state']})
+
     except KeyboardInterrupt:
+        global pollRules_flag
         del threads_pingers[:]
+        pollRules_flag = False
         ubus.disconnect()
 
 if __name__ == "__main__":
