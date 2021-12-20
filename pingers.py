@@ -11,6 +11,12 @@ from journal import journal
 
 
 
+#status codes
+#-2 - error
+#-1 - toggled off by user (or response is not updated)
+# 0 - good, but no response
+# 1 - good and have response
+
 class protocol_type(enum.Enum):
     empty = 0,
     ICMP = 1
@@ -72,11 +78,7 @@ def do_event(event, name, state):
 def thread_poll(thread_id, pinger):
     while thread_id in threads_pingers:
         if not pinger.state:
-            #time.sleep(1)
             continue
-
-        #print("thread_poll loop... " + pinger.parameters['address'])
-
         try:
             result = ping(address=pinger.parameters['address'], count=pinger.parameters['tries'], payload_size=pinger.parameters['size'], timeout=(pinger.parameters['timeout'] / 1000))
 
@@ -97,8 +99,6 @@ def thread_poll(thread_id, pinger):
             #bad ping
             print("thread_poll exception: " + str(ex))
 
-        #time.sleep(1)
-
 def expression_convert(expression):
     result = re.findall(r'%_(\S+)_%', expression)
     result = set(result)
@@ -117,8 +117,8 @@ def expression_convert(expression):
 
 def applyConf():
     def get_pinger_state_callback(event, data):
-        ret_val = { 'state' : '-1',
-                    'status' : '-2' }
+        ret_val = { 'state' : '0',
+                    'status' : '-1' }
 
         pingerMutex.acquire()
 
@@ -133,8 +133,8 @@ def applyConf():
         event.reply(ret_val)
 
     def get_rule_state_callback(event, data):
-        ret_val = { 'state' : '-1',
-                    'status' : '-2' }
+        ret_val = { 'state' : '0',
+                    'status' : '-1' }
 
         ruleMutex.acquire()
 
@@ -343,7 +343,7 @@ def pollRules():
         for p in pingers:
             if p.status == 1:
                 data[p.name] = True
-            else:
+            if p.status == 0:
                 data[p.name] = False
 
         pingerMutex.release()
@@ -352,10 +352,16 @@ def pollRules():
 
         for r in rules:
             if not r.state:
+                r.status = -1
+                continue
+                
+            try:
+                expr = expression_convert(r.expression)
+                expr_res = eval(expr)
+            except: #bad pinger status
+                r.status = -2
                 continue
 
-            expr = expression_convert(r.expression)
-            expr_res = eval(expr)
             new_status = -1
 
             if not expr_res:
