@@ -3,6 +3,7 @@ config globals 'globals'
 	list protocol 'ICMP.пинг'
 	list event 'NONE.нет'
 	list event 'statechanged.Состояние изменено'
+	option maxpingers 32
 
 config pinger 'pinger_prototype'
 	option name 'Pinger'

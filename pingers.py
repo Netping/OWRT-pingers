@@ -65,6 +65,8 @@ pollRules_flag = True
 pinger_default = pinger()
 rule_default = rule()
 
+max_pingers = 0
+
 
 def do_event(event, name, state):
     if event == event_type.statechanged:
@@ -97,7 +99,7 @@ def thread_poll(thread_id, pinger):
                 pinger.status = -2
         except Exception as ex:
             #bad ping
-            print("thread_poll exception: " + str(ex))
+            journal.WriteLog(module_name, "Normal", "error", "thread_poll exception: " + str(ex))
 
 def expression_convert(expression):
     result = re.findall(r'%_(\S+)_%', expression)
@@ -150,6 +152,9 @@ def applyConf():
 
     confvalues = ubus.call("uci", "get", {"config": confName})
     for confdict in list(confvalues[0]['values'].values()):
+        if confdict['.type'] == 'globals' and confdict['.name'] == 'globals':
+            max_pingers = int(confdict['maxpingers'])
+
         if confdict['.type'] == 'pinger' and confdict['.name'] == 'pinger_prototype':
             try:
                 pinger_default.name = confdict['name']
@@ -254,7 +259,12 @@ def applyConf():
 
 
             pingerMutex.acquire()
-            pingers.append(p)
+
+            if (len(pingers) < max_pingers):    
+                pingers.append(p)
+            else:
+                journal.WriteLog(module_name, "Normal", "error", "Too many pingers in config file")
+
             pingerMutex.release()
 
         #new rule
@@ -354,7 +364,7 @@ def pollRules():
             if not r.state:
                 r.status = -1
                 continue
-                
+
             try:
                 expr = expression_convert(r.expression)
                 expr_res = eval(expr)
@@ -381,6 +391,8 @@ def pollRules():
         time.sleep(1)
 
 def main():
+    journal.WriteLog(module_name, "Normal", "notice", module_name + " started!")
+
     try:
         ubus.connect()
 
@@ -402,6 +414,8 @@ def main():
         del threads_pingers[:]
         pollRules_flag = False
         ubus.disconnect()
+
+    journal.WriteLog(module_name, "Normal", "notice", module_name + " finished!")
 
 if __name__ == "__main__":
     main()
