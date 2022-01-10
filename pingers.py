@@ -117,7 +117,7 @@ def expression_convert(expression):
 
     return expression
 
-def applyConf():
+def ubus_init():
     def get_pinger_state_callback(event, data):
         ret_val = { 'state' : '0',
                     'status' : '-1' }
@@ -150,6 +150,26 @@ def applyConf():
 
         event.reply(ret_val)
 
+    ubus.add(
+            'owrt_pingers', {
+                'get_pinger_state': {
+                    'method': get_pinger_state_callback,
+                    'signature': {
+                        'name': ubus.BLOBMSG_TYPE_STRING
+                    }
+                },
+                'get_rule_state': {
+                    'method': get_rule_state_callback,
+                    'signature': {
+                        'name': ubus.BLOBMSG_TYPE_STRING
+                    }
+                }
+            }
+        )
+
+
+
+def applyConf():
     confvalues = ubus.call("uci", "get", {"config": confName})
     for confdict in list(confvalues[0]['values'].values()):
         if confdict['.type'] == 'globals' and confdict['.name'] == 'globals':
@@ -318,23 +338,6 @@ def applyConf():
 
     pingerMutex.release()
 
-    ubus.add(
-            'owrt_pingers', {
-                'get_pinger_state': {
-                    'method': get_pinger_state_callback,
-                    'signature': {
-                        'name': ubus.BLOBMSG_TYPE_STRING
-                    }
-                },
-                'get_rule_state': {
-                    'method': get_rule_state_callback,
-                    'signature': {
-                        'name': ubus.BLOBMSG_TYPE_STRING
-                    }
-                }
-            }
-        )
-
 def reconfigure(event, data):
     if data['config'] == confName:
         del pingers[:]
@@ -396,6 +399,7 @@ def main():
     try:
         ubus.connect()
 
+        ubus_init()
         applyConf()
 
         pollRulesThread = Thread(target=pollRules, args=())
