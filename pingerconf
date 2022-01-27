@@ -18,33 +18,3 @@ config rule 'rule_prototype'
 	option expression ''
 	option event_true 'NONE'
 	option event_false 'NONE'
-
-config pinger
-	option name 'google_ping'
-	option description 'Ping google dns'
-	option protocol 'ICMP'
-	option state '1'
-	option address '8.8.8.8'
-	option size 64
-	option timeout 1500
-	option tries 3
-	option nofails 0
-
-config pinger
-	option name 'yandex_ping'
-	option description 'Ping yandex'
-	option protocol 'ICMP'
-	option state '1'
-	option address 'ya.ru'
-	option size 64
-	option timeout 1500
-	option tries 3
-	option nofails 0
-
-config rule
-	option name 'Google good'
-	option description 'True if ping google success'
-	option state '1'
-	option expression '%_google_ping_% AND %_yandex_ping_%'
-	option event_true 'statechanged'
-	option event_false 'statechanged'
