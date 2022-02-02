@@ -7,7 +7,7 @@ PKG_VERSION="V0.1"
 PKG_RELEASE=6
 PKG_DEPENDS=OWRT_Log
 
-MODULE_FILES=pingers.py
+MODULE_FILES=pingers.py Configname
 MODULE_FILES_DIR=/etc/netping_pingers/
 
 CONF_FILE=pingerconf
@@ -31,6 +31,7 @@ ifneq ($(INSTALL_DIR),)
 endif
 	cp $(CONF_FILE) $(INSTALL_DIR)/$(CONF_DIR)
 	mkdir -p $(INSTALL_DIR)$(MODULE_FILES_DIR)
+	mkdir -p $(INSTALL_DIR)$(MODULE_FILES_DIR)/commands
 	for f in $(MODULE_FILES); do cp $${f} $(INSTALL_DIR)/$(MODULE_FILES_DIR); done
 
 clean:
