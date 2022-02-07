@@ -3,8 +3,8 @@ CATEGORY="Base"
 TITLE="OWRT_pingers"
 
 PKG_NAME="OWRT_pingers"
-PKG_VERSION="V0.1"
-PKG_RELEASE=6
+PKG_VERSION="0.1"
+PKG_RELEASE=7
 PKG_DEPENDS=OWRT_Log
 
 MODULE_FILES=pingers.py Configname
@@ -12,6 +12,8 @@ MODULE_FILES_DIR=/etc/netping_pingers/
 
 CONF_FILE=pingerconf
 CONF_DIR=/etc/config/
+
+AUTORUN_FILES=owrt_pingers_autorun
 
 INSTALL_DIR=
 
@@ -28,16 +30,23 @@ configure:
 install:
 ifneq ($(INSTALL_DIR),)
 	mkdir -p $(INSTALL_DIR)$(CONF_DIR)
+	mkdir -p $(INSTALL_DIR)/etc/init.d
+	mkdir -p $(INSTALL_DIR)/etc/rc.d
 endif
 	cp $(CONF_FILE) $(INSTALL_DIR)/$(CONF_DIR)
 	mkdir -p $(INSTALL_DIR)$(MODULE_FILES_DIR)
 	mkdir -p $(INSTALL_DIR)$(MODULE_FILES_DIR)/commands
 	for f in $(MODULE_FILES); do cp $${f} $(INSTALL_DIR)/$(MODULE_FILES_DIR); done
+	for f in $(AUTORUN_FILES); do cp $${f} $(INSTALL_DIR)/etc/init.d; done
+	mv $(INSTALL_DIR)/etc/init.d/owrt_pingers_autorun $(INSTALL_DIR)/etc/init.d/owrt_pingers
+	ln -s ../init.d/owrt_pingers $(INSTALL_DIR)/etc/rc.d/S90OWRT-Pingers
 
 clean:
 ifeq ($(INSTALL_DIR),)
 	rm -f $(CONF_DIR)$(CONF_FILE)
 	rm -rf $(MODULE_FILES_DIR)
+	rm -f /etc/init.d/owrt_pingers
+	rm -f /etc/rc.d/S90OWRT-Pingers
 else
 	rm -rf $(INSTALL_DIR)
 endif
