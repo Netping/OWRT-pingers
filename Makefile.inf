@@ -1,11 +1,11 @@
 SECTION="NetPing modules"
 CATEGORY="Base"
-TITLE="OWRT_pingers"
+TITLE="OWRT-pingers"
 
-PKG_NAME="OWRT_pingers"
+PKG_NAME="OWRT-pingers"
 PKG_VERSION="V0.1"
 PKG_RELEASE=6
-PKG_DEPENDS=OWRT_Log
+PKG_DEPENDS=OWRT-log
 
 MODULE_FILES=pingers.py Configname
 MODULE_FILES_DIR=/etc/netping_pingers/
