@@ -5,7 +5,7 @@ TITLE="OWRT-pingers"
 PKG_NAME="OWRT-pingers"
 PKG_VERSION="V0.1"
 PKG_RELEASE=7
-PKG_DEPENDS=OWRT-Log
+PKG_DEPENDS=OWRT-log
 
 
 MODULE_FILES=pingers.py Configname
