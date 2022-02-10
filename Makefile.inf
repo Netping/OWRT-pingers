@@ -9,7 +9,7 @@ PKG_DEPENDS=OWRT-Log
 
 
 MODULE_FILES=pingers.py Configname
-MODULE_FILES_DIR=/etc/netping_pingers/
+MODULE_FILES_DIR=/etc/netping/pingers/
 
 CONF_FILE=pingerconf
 CONF_DIR=/etc/config/
@@ -18,11 +18,14 @@ AUTORUN_FILES=owrt_pingers_autorun
 
 INSTALL_DIR=
 
-.PHONY: all install
+all: build preinstall install configure 
 
-all: configure build install
+ipk: build install
 
 build:
+	@echo "Nothing to do"
+
+preinstall:
 	@echo "Nothing to do"
 
 configure:
