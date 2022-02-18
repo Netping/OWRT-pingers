@@ -4,7 +4,7 @@ TITLE="OWRT-pingers"
 
 PKG_NAME="OWRT-pingers"
 PKG_VERSION="V0.1"
-PKG_RELEASE=7
+PKG_RELEASE=8
 PKG_DEPENDS=OWRT-log
 
 
@@ -15,6 +15,8 @@ CONF_FILE=pingerconf
 CONF_DIR=/etc/config/
 
 AUTORUN_FILES=owrt_pingers_autorun
+
+TESTS_SRC_DIR=Tests
 
 INSTALL_DIR=
 
@@ -41,6 +43,7 @@ endif
 	mkdir -p $(INSTALL_DIR)$(MODULE_FILES_DIR)
 	mkdir -p $(INSTALL_DIR)$(MODULE_FILES_DIR)/commands
 	for f in $(MODULE_FILES); do cp $${f} $(INSTALL_DIR)/$(MODULE_FILES_DIR); done
+	cp -r $(TESTS_SRC_DIR) $(INSTALL_DIR)$(MODULE_FILES_DIR)
 	for f in $(AUTORUN_FILES); do cp $${f} $(INSTALL_DIR)/etc/init.d; done
 	mv $(INSTALL_DIR)/etc/init.d/owrt_pingers_autorun $(INSTALL_DIR)/etc/init.d/owrt_pingers
 	ln -s ../init.d/owrt_pingers $(INSTALL_DIR)/etc/rc.d/S90OWRT-Pingers
