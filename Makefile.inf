@@ -46,7 +46,7 @@ endif
 	cp -r $(TESTS_SRC_DIR) $(INSTALL_DIR)$(MODULE_FILES_DIR)
 	for f in $(AUTORUN_FILES); do cp $${f} $(INSTALL_DIR)/etc/init.d; done
 	mv $(INSTALL_DIR)/etc/init.d/owrt_pingers_autorun $(INSTALL_DIR)/etc/init.d/owrt_pingers
-	ln -s ../init.d/owrt_pingers $(INSTALL_DIR)/etc/rc.d/S90OWRT-Pingers
+	ln -fs ../init.d/owrt_pingers $(INSTALL_DIR)/etc/rc.d/S90OWRT-Pingers
 
 clean:
 ifeq ($(INSTALL_DIR),)
